@@ -1,0 +1,78 @@
+{
+  "config": {
+    "abort": {
+      "already_configured": "This floor is already configured. Only one presence map can be created per floor."
+    },
+    "step": {
+      "user": {
+        "data": {
+          "floor": "Floor"
+        },
+        "data_description": {
+          "floor": "The floor that will be mapped out. Use a different configuration entry per floor to create multiple presence maps."
+        },
+        "description": "Configure a presence map for a floor of your home. Each floor can have its own presence map with zones and sensors.",
+        "title": "Presence Zones"
+      }
+    }
+  },
+  "config_subentries": {
+    "sensor": {
+      "entry_type": "Sensor",
+      "error": {
+        "error_even_number_xy_pair": "Select an even number of distance entities so they can be paired as (x, y) measurements."
+      },
+      "initiate_flow": {
+        "user": "Add a sensor"
+      },
+      "step": {
+        "user": {
+          "data": {
+            "device": "Device",
+            "entities": "Distance entities",
+            "name": "[%key:common::config_flow::data::name%]",
+            "sensor_position_angle": "Orientation",
+            "sensor_position_x": "Position X",
+            "sensor_position_y": "Position Y"
+          },
+          "data_description": {
+            "device": "The device providing the distance measurements.",
+            "entities": "The distance entities of the device to use. An even number of entities is required so they can be paired as (x, y) measurements.",
+            "name": "Name used to identify this sensor.",
+            "sensor_position_angle": "Orientation of the sensor on the floor map, in degrees (-180 to 180).",
+            "sensor_position_x": "X coordinate of the sensor on the floor map.",
+            "sensor_position_y": "Y coordinate of the sensor on the floor map."
+          },
+          "description": "Add a distance sensor device and position it on the floor map so its measurements can be used for presence detection.",
+          "title": "Add a sensor"
+        }
+      }
+    },
+    "zone": {
+      "abort": {
+        "already_configured": "A zone with this name already exists."
+      },
+      "entry_type": "Zone",
+      "error": {
+        "error_polygon_3_points": "A polygon needs at least 3 points to form a valid area."
+      },
+      "initiate_flow": {
+        "user": "Add a zone"
+      },
+      "step": {
+        "user": {
+          "data": {
+            "name": "[%key:common::config_flow::data::name%]",
+            "polygon": "Polygon"
+          },
+          "data_description": {
+            "name": "Name used to identify this zone.",
+            "polygon": "A list of [x, y] coordinates that define the polygon of this zone. At least 3 points are required to form a valid area."
+          },
+          "description": "Define a presence zone by giving it a name and the polygon that outlines its area on the floor.",
+          "title": "Add a zone"
+        }
+      }
+    }
+  }
+}
