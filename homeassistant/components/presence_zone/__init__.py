@@ -12,7 +12,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
 
     # TODO Optionally validate config entry options before setting up platform
 
-    await hass.config_entries.async_forward_entry_setups(entry, (Platform.SENSOR,))
+    await hass.config_entries.async_forward_entry_setups(
+        entry, (Platform.BINARY_SENSOR,)
+    )
 
     # TODO Remove if the integration does not have an options flow
     entry.async_on_unload(entry.add_update_listener(config_entry_update_listener))

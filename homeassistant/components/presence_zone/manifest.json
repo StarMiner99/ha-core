@@ -1,16 +1,13 @@
 {
   "domain": "presence_zone",
   "name": "Presence Zones",
-  "categories": ["helpers"],
+  "categories": ["presence_location.trackers"],
   "codeowners": ["@StarMiner99"],
   "config_flow": true,
   "dependencies": [],
   "documentation": "https://www.home-assistant.io/integrations/presence_zone",
-  "homekit": {},
-  "integration_type": "helper",
+  "integration_type": "service",
   "iot_class": "calculated",
   "quality_scale": "bronze",
-  "requirements": [],
-  "ssdp": [],
-  "zeroconf": []
+  "requirements": []
 }
