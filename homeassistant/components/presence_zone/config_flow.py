@@ -12,7 +12,11 @@ from homeassistant.config_entries import (
 )
 from homeassistant.const import CONF_DEVICE, CONF_ENTITIES, CONF_NAME
 from homeassistant.core import callback
-from homeassistant.helpers import floor_registry as fr, selector
+from homeassistant.helpers import (
+    entity_registry as er,
+    floor_registry as fr,
+    selector,
+)
 
 from .const import DOMAIN, SUBENTRY_SENSOR, SUBENTRY_ZONE
 
@@ -107,14 +111,6 @@ STEP_SENSOR_USER_SCHEMA = probatio.Schema(
                 ),
             )
         ),
-        probatio.Required(CONF_ENTITIES): selector.EntitySelector(
-            selector.EntitySelectorConfig(
-                domain="sensor",
-                device_class="distance",
-                multiple=True,
-                context={"filter_device": CONF_DEVICE},
-            )
-        ),
         probatio.Required("sensor_position_x"): float,
         probatio.Required("sensor_position_y"): float,
         probatio.Required("sensor_position_angle", default=0): selector.NumberSelector(
@@ -132,31 +128,65 @@ STEP_SENSOR_USER_SCHEMA = probatio.Schema(
 class SensorSubEntryFlow(ConfigSubentryFlow):
     """Handle config flow for sensor sub entry."""
 
+    _name: str
+    _device_id: str
+    _position: list[float]
+
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
     ) -> SubentryFlowResult:
         """Start user step config flow."""
-        errors: dict[str, str] = {}
         if user_input is not None:
             # no ID, if user wants to use device twice he can
+            self._name = user_input[CONF_NAME]
+            self._device_id = user_input[CONF_DEVICE]
+            self._position = [
+                user_input["sensor_position_x"],
+                user_input["sensor_position_y"],
+                user_input["sensor_position_angle"],
+            ]
+            return await self.async_step_entities()
+
+        return self.async_show_form(step_id="user", data_schema=STEP_SENSOR_USER_SCHEMA)
+
+    async def async_step_entities(
+        self, user_input: dict[str, Any] | None = None
+    ) -> SubentryFlowResult:
+        """Pick the distance entities belonging to the chosen device."""
+        errors: dict[str, str] = {}
+        if user_input is not None:
             validated_entities = self._verify_entities(user_input[CONF_ENTITIES])
             if validated_entities is not None:
                 errors[CONF_ENTITIES] = validated_entities
             else:
                 return self.async_create_entry(
-                    title=user_input[CONF_NAME],
+                    title=self._name,
                     data={
-                        "position": [
-                            user_input["sensor_position_x"],
-                            user_input["sensor_position_y"],
-                            user_input["sensor_position_angle"],
-                        ],
+                        "position": self._position,
                         "entities": user_input[CONF_ENTITIES],
                     },
                 )
 
+        device_entities = [
+            entry.entity_id
+            for entry in er.async_entries_for_device(
+                er.async_get(self.hass), self._device_id
+            )
+            if entry.domain == "sensor"
+        ]
+        schema = probatio.Schema(
+            {
+                probatio.Required(CONF_ENTITIES): selector.EntitySelector(
+                    selector.EntitySelectorConfig(
+                        include_entities=device_entities,
+                        device_class="distance",
+                        multiple=True,
+                    )
+                ),
+            }
+        )
         return self.async_show_form(
-            step_id="user", data_schema=STEP_SENSOR_USER_SCHEMA, errors=errors
+            step_id="entities", data_schema=schema, errors=errors
         )
 
     def _verify_entities(self, entities: list[str]) -> str | None:
