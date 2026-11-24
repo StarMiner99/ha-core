@@ -1,6 +1,7 @@
 from typing import TypedDict
 
 from hassfest.model import dataclass
+
 from homeassistant.config_entries import ConfigSubentry
 
 
