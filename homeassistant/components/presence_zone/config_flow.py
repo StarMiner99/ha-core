@@ -1,6 +1,8 @@
 """Config flow for the Presence Zones integration."""
 
+import json
 from typing import Any, override
+import uuid
 
 import probatio
 
@@ -18,7 +20,7 @@ from homeassistant.helpers import (
     selector,
 )
 
-from .const import DOMAIN, SUBENTRY_SENSOR, SUBENTRY_ZONE
+from .const import COMBINATION_NAMESPACE, DOMAIN, SUBENTRY_SENSOR, SUBENTRY_ZONE
 
 STEP_USER_SCHEMA = probatio.Schema(
     {probatio.Optional("floor"): selector.FloorSelector()}
@@ -79,9 +81,9 @@ class ZoneSubEntryFlow(ConfigSubentryFlow):
         """Start user step config flow."""
         errors: dict[str, str] = {}
         if user_input is not None:
-            # should change this to ID, either random or user selected
-            # await self.async_set_unique_id(user_input[CONF_NAME])
-            # self._abort_if_unique_id_configured()
+            # should change this to ID, mb random
+            await self.async_set_unique_id(user_input[CONF_NAME])
+            self._abort_if_unique_id_configured()
             validated_polygon = self._validate_polygon(user_input["polygon"])
             if validated_polygon is not None:
                 errors["polygon"] = validated_polygon
@@ -125,6 +127,11 @@ STEP_SENSOR_USER_SCHEMA = probatio.Schema(
 )
 
 
+def _get_sensor_uuid(entity_ids: list[str]):
+    payload = json.dumps(entity_ids)
+    return str(uuid.uuid5(COMBINATION_NAMESPACE, payload))
+
+
 class SensorSubEntryFlow(ConfigSubentryFlow):
     """Handle config flow for sensor sub entry."""
 
@@ -137,7 +144,6 @@ class SensorSubEntryFlow(ConfigSubentryFlow):
     ) -> SubentryFlowResult:
         """Start user step config flow."""
         if user_input is not None:
-            # no ID, if user wants to use device twice he can
             self._name = user_input[CONF_NAME]
             self._device_id = user_input[CONF_DEVICE]
             self._position = [
@@ -155,6 +161,10 @@ class SensorSubEntryFlow(ConfigSubentryFlow):
         """Pick the distance entities belonging to the chosen device."""
         errors: dict[str, str] = {}
         if user_input is not None:
+            # get ID from entity combination
+            await self.async_set_unique_id(_get_sensor_uuid(user_input[CONF_ENTITIES]))
+            self._abort_if_unique_id_configured()
+
             validated_entities = self._verify_entities(user_input[CONF_ENTITIES])
             if validated_entities is not None:
                 errors[CONF_ENTITIES] = validated_entities
