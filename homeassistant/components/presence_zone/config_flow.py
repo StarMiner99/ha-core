@@ -14,11 +14,7 @@ from homeassistant.config_entries import (
 )
 from homeassistant.const import CONF_DEVICE, CONF_ENTITIES, CONF_NAME
 from homeassistant.core import callback
-from homeassistant.helpers import (
-    entity_registry as er,
-    floor_registry as fr,
-    selector,
-)
+from homeassistant.helpers import entity_registry as er, floor_registry as fr, selector
 
 from .const import COMBINATION_NAMESPACE, DOMAIN, SUBENTRY_SENSOR, SUBENTRY_ZONE
 
@@ -82,14 +78,21 @@ class ZoneSubEntryFlow(ConfigSubentryFlow):
         errors: dict[str, str] = {}
         if user_input is not None:
             # should change this to ID, mb random
-            await self.async_set_unique_id(user_input[CONF_NAME])
-            self._abort_if_unique_id_configured()
+            unique_id = user_input[CONF_NAME]
+            if any(
+                subentry.unique_id == unique_id
+                for subentry in self._get_entry().subentries.values()
+            ):
+                return self.async_abort(reason="already_configured")
+
             validated_polygon = self._validate_polygon(user_input["polygon"])
             if validated_polygon is not None:
                 errors["polygon"] = validated_polygon
             else:
                 return self.async_create_entry(
-                    title=user_input[CONF_NAME], data={"polygon": user_input["polygon"]}
+                    title=user_input[CONF_NAME],
+                    data={"polygon": user_input["polygon"]},
+                    unique_id=unique_id,
                 )
 
         return self.async_show_form(
@@ -105,7 +108,7 @@ class ZoneSubEntryFlow(ConfigSubentryFlow):
 STEP_SENSOR_USER_SCHEMA = probatio.Schema(
     {
         probatio.Required(CONF_NAME): str,
-        probatio.Required(CONF_DEVICE): selector.DeviceSelector(
+        probatio.Optional(CONF_DEVICE): selector.DeviceSelector(
             selector.DeviceSelectorConfig(
                 entity=selector.EntityFilterSelectorConfig(
                     domain="sensor",
@@ -129,14 +132,14 @@ STEP_SENSOR_USER_SCHEMA = probatio.Schema(
 
 def _get_sensor_uuid(entity_ids: list[str]):
     payload = json.dumps(entity_ids)
-    return str(uuid.uuid5(COMBINATION_NAMESPACE, payload))
+    return str(uuid.uuid5(uuid.UUID(COMBINATION_NAMESPACE), payload))
 
 
 class SensorSubEntryFlow(ConfigSubentryFlow):
     """Handle config flow for sensor sub entry."""
 
     _name: str
-    _device_id: str
+    _device_id: str | None
     _position: list[float]
 
     async def async_step_user(
@@ -145,7 +148,7 @@ class SensorSubEntryFlow(ConfigSubentryFlow):
         """Start user step config flow."""
         if user_input is not None:
             self._name = user_input[CONF_NAME]
-            self._device_id = user_input[CONF_DEVICE]
+            self._device_id = user_input.get(CONF_DEVICE)
             self._position = [
                 user_input["sensor_position_x"],
                 user_input["sensor_position_y"],
@@ -162,8 +165,12 @@ class SensorSubEntryFlow(ConfigSubentryFlow):
         errors: dict[str, str] = {}
         if user_input is not None:
             # get ID from entity combination
-            await self.async_set_unique_id(_get_sensor_uuid(user_input[CONF_ENTITIES]))
-            self._abort_if_unique_id_configured()
+            unique_id = _get_sensor_uuid(user_input[CONF_ENTITIES])
+            if any(
+                subentry.unique_id == unique_id
+                for subentry in self._get_entry().subentries.values()
+            ):
+                return self.async_abort(reason="already_configured")
 
             validated_entities = self._verify_entities(user_input[CONF_ENTITIES])
             if validated_entities is not None:
@@ -175,23 +182,31 @@ class SensorSubEntryFlow(ConfigSubentryFlow):
                         "position": self._position,
                         "entities": user_input[CONF_ENTITIES],
                     },
+                    unique_id=unique_id,
                 )
 
-        device_entities = [
-            entry.entity_id
-            for entry in er.async_entries_for_device(
-                er.async_get(self.hass), self._device_id
-            )
-            if entry.domain == "sensor"
-        ]
+        device_entities = (
+            [
+                entry.entity_id
+                for entry in er.async_entries_for_device(
+                    er.async_get(self.hass), self._device_id
+                )
+                if entry.domain == "sensor"
+            ]
+            if self._device_id is not None
+            else None
+        )
+        entity_selector_config = selector.EntitySelectorConfig(
+            domain="sensor",
+            device_class="distance",
+            multiple=True,
+        )
+        if device_entities is not None:
+            entity_selector_config["include_entities"] = device_entities
         schema = probatio.Schema(
             {
                 probatio.Required(CONF_ENTITIES): selector.EntitySelector(
-                    selector.EntitySelectorConfig(
-                        include_entities=device_entities,
-                        device_class="distance",
-                        multiple=True,
-                    )
+                    entity_selector_config
                 ),
             }
         )

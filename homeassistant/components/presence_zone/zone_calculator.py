@@ -1,6 +1,6 @@
 from math import cos, sin
 
-from homeassistant.components.presence_zone.models import SensorViewPoint, Point2D
+from homeassistant.components.presence_zone.models import Point2D, SensorViewPoint
 
 
 def async_sensor_coords_to_absolute(

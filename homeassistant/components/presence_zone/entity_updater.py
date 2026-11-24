@@ -1,14 +1,21 @@
-from homeassistant.components.presence_zone.binary_sensor import (
-    PresenceZoneMotionSensorEntity,
-)
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from homeassistant.components.presence_zone.models import Point2D, SensorConfig
 from homeassistant.components.presence_zone.zone_calculator import (
     async_is_point_in_polygon,
     async_sensor_coords_to_absolute,
 )
+from homeassistant.config_entries import _LOGGER
 from homeassistant.const import STATE_UNAVAILABLE, STATE_UNKNOWN
 from homeassistant.core import Event, EventStateChangedData, HomeAssistant, callback
 from homeassistant.util import Callable
+
+if TYPE_CHECKING:
+    from homeassistant.components.presence_zone.binary_sensor import (
+        PresenceZoneMotionSensorEntity,
+    )
 
 type MotionSensorCallback = tuple[
     PresenceZoneMotionSensorEntity, Callable[[bool, str], None]
@@ -41,6 +48,7 @@ class PresenceEntityUpdater:
 
     @callback
     def async_input_sensor_changed(self, event: Event[EventStateChangedData]) -> None:
+        _LOGGER.warning(event)
         for sensor in self._input_sensors:
             if sensor.contains_entity_id(event.data["entity_id"]):
                 points: list[Point2D] = []
@@ -48,6 +56,7 @@ class PresenceEntityUpdater:
                 for x_entity_id, y_entity_id in sensor.entity_ids:
                     coordinate_x = self._async_get_float_from_state(x_entity_id)
                     coordinate_y = self._async_get_float_from_state(y_entity_id)
+                    _LOGGER.warning("coord: %f, %f", coordinate_x, coordinate_y)
                     if (
                         coordinate_x is None  # at least one coordinate is missing
                         or coordinate_y is None

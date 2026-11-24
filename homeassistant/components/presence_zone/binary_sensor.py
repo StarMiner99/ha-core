@@ -25,7 +25,7 @@ async def async_setup_entry(
     sensors_raw = config_entry.get_subentries_of_type(SUBENTRY_SENSOR)
     sensors = parse_sensor_configs(sensors_raw)
     sensor_entity_ids = flatten_sensor_config_to_entity_ids(sensors)
-    updater = PresenceEntityUpdater(sensors)
+    updater = PresenceEntityUpdater(sensors, hass)
 
     config_entry.async_on_unload(
         async_track_state_change_event(
@@ -35,12 +35,14 @@ async def async_setup_entry(
 
     zones = config_entry.get_subentries_of_type(SUBENTRY_ZONE)
 
-    for zone in zones:
-        async_add_entities(
+    async_add_entities(
+        [
             PresenceZoneMotionSensorEntity(
                 zone.unique_id, zone.title, zone.data["polygon"], updater
             )
-        )
+            for zone in zones
+        ]
+    )
 
 
 class PresenceZoneMotionSensorEntity(BinarySensorEntity):
@@ -50,9 +52,6 @@ class PresenceZoneMotionSensorEntity(BinarySensorEntity):
     _attr_translation_key = "presence_zone_motion"
 
     _attr_should_poll = False
-
-    # list of sensors unique ids which triggered motion in this zone
-    _activated_by: set[str] = []
 
     def __init__(
         self,
@@ -67,11 +66,13 @@ class PresenceZoneMotionSensorEntity(BinarySensorEntity):
         self._attr_translation_placeholders = {"zone_name": zone_name}
         self._polygon_points = [Point2D(x=point[0], y=point[1]) for point in polygon]
         self._updater = updater
+        # list of sensors unique ids which triggered motion in this zone
+        self._activated_by: set[str] = set()
 
     async def async_added_to_hass(self) -> None:
         """Register entity as soon as added to hass."""
         await super().async_added_to_hass()
-        self._updater.register_entity(self, self._handle_update)
+        self._updater.register_entity(self, self._async_handle_update)
 
     @callback
     def _async_handle_update(self, is_on: bool, sensor_uid: str) -> None:

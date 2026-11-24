@@ -11,8 +11,7 @@
         "data_description": {
           "floor": "The floor that will be mapped out. Use a different configuration entry per floor to create multiple presence maps."
         },
-        "description": "Configure a presence map for a floor of your home. Each floor can have its own presence map with zones and sensors.",
-        "title": "Presence Zones"
+        "description": "Configure a presence map for a floor of your home. Each floor can have its own presence map with zones and sensors."
       }
     }
   },
